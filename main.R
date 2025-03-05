@@ -10,11 +10,12 @@ View(raw_data)
 names <- sort(names(raw_data))
 summary(raw_data)
 
-# -----------Preprocessing-------------
+# -----------Pre-processing-------------
 
 # 1. Remove unnecessary Data
 
-clean_data <- raw_data[-1]
+
+clean_data <- raw_data[-1] # Remove ID column
 
 # 2.  Check for NULL/NA Values
 
@@ -25,7 +26,7 @@ print(paste("The given data contains missing values: ", contains_na ))
 # 3. checking duplicates
 
 duplicates <- clean_data %>% group_by_all() %>% filter(n() > 1)
-print(paste("The dataset contains ", nrow(duplicates), " rows"))
+print(paste("The dataset contains ", nrow(duplicates), " duplicate rows"))
 
 # 4. Dividing inputs and outputs
 X <- clean_data %>% select(-diagnosis)
