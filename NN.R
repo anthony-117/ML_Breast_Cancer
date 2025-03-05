@@ -18,7 +18,7 @@ activation.dfn <- function(x){
 }
 
 cost <- function(error){
-  return(-0.5 * colSums(error^2) )
+  return(0.5 * colSums(error^2) )
 }
 
 dirac.hidden <- function(z.l, dirac.lp, weight.p){
@@ -56,7 +56,6 @@ NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
     Y.d = Y.d,
     layers = layers,
     weights = weights,
-    old_weights = weights,
     learning_rate = learning_rate,
     momentum = momentum,
     epochs = epochs,
@@ -65,29 +64,6 @@ NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
   return(NN)
   
 }
-# 
-# 
-# feed_forward <- function(NN){
-#   y.fw <- list()
-#   z.fw <- list()
-#   y <- as.matrix(NN$X)
-#   for( l in 1:length(NN$weights)){
-#     y.p <- cbind(-1,y)
-#     z.l <- y.p %*% NN$weights[[l]]
-#     z.fw[[l]] <- z.l
-#     
-#     y.l <- activation.fn(z.l)
-#     
-#     y.fw[[l]] <- y.l
-#     y <- y.l
-#   }
-#   
-#   return(list(
-#     y.fw = y.fw,
-#     z.fw = z.fw
-#     ))
-# }
-
 
 feed_forward <- function(NN){
   y.fw <- list()
@@ -108,7 +84,7 @@ feed_forward <- function(NN){
     # Apply activation function
     y.l <- activation.fn(z.l)
     
-    # Store activations (using l+1 since input is at position 1)
+    # Store activation (using l+1 since input is at position 1)
     y.fw[[l+1]] <- y.l
     
     # Set current layer output as input to next layer
@@ -144,76 +120,86 @@ back_propagation <- function(NN, z.fw){
 }
 
 NN.train <- function(NN, verbose = TRUE) {
-  # Initialize cost history
+  
   cost_history <- numeric(NN$epochs)
   
-  # Store old weights for momentum calculations
-  old_weight_updates <- lapply(NN$weights, function(w) matrix(0, nrow = nrow(w), ncol = ncol(w)))
+  old_weight <- NN$weights
   
-  # Training loop
   for (epoch in 1:NN$epochs) {
-    # Forward pass
+    percent < .8
+    indices <- sample(1:nrow(X), size = percent*nrow(X))
+    
+    X.train <- X[indices,]
+    y.train <- y[indices,]
+    
+    X.test <- X[-indices,]
+    y.test <- y[-indices,]
+    
+    
     forward_result <- feed_forward(NN)
     y.fw <- forward_result$y.fw
     z.fw <- forward_result$z.fw
     
-    # Get final output
     output <- y.fw[[length(y.fw)]]
     
-    # Calculate error and cost
     error <- NN$Y.d - output
-    current_cost <- sum(0.5 * colSums(error^2))
+    current_cost <- cost(error)
     cost_history[epoch] <- current_cost
     
-    # Backward pass to get gradients
     dirac <- back_propagation(NN, z.fw)
     
-    # Update weights using gradients, learning rate, and momentum
     for (l in 1:length(NN$weights)) {
-      # Get activations from previous layer (with bias)
+      
       if (l == 1) {
-        a_prev <- cbind(-1, NN$X)
+        a <- cbind(-1, NN$X)
       } else {
-        a_prev <- cbind(-1, y.fw[[l]])
+        a <- cbind(-1, y.fw[[l]])
       }
       
-      # Calculate weight updates
-      # Gradient is outer product of activations and delta
-      gradient <- t(a_prev) %*% dirac[[l]]
+
+      weight.delta <- NN$learning_rate * (t(a) %*% dirac[[l]]) + NN$momentum *(NN$weight[[l]] - old_weight[[l]])
       
-      # Apply momentum
-      weight_update <- NN$learning_rate * gradient + NN$momentum * old_weight_updates[[l]]
       
-      # Store current update for next epoch's momentum
-      old_weight_updates[[l]] <- weight_update
+      old_weight[[l]] <- NN$weights[[l]]
       
-      # Update weights
-      NN$weights[[l]] <- NN$weights[[l]] + weight_update
+      NN$weights[[l]] <- NN$weights[[l]] + weight.delta
     }
     
-    # Print progress if verbose
+    # --- 6. Forward propagation on Testing Set ---
+    NN$X <- X_test
+    NN$Y.d <- Y_test
+    test_result <- feed_forward(NN)
+    test_output <- test_result$y.fw[[length(test_result$y.fw)]]
+    
+    # --- 7. Compute Testing Cost ---
+    error_test <- Y_test - test_output
+    test_cost_history[epoch] <- cost(error_test)
+    
+    # --- 8. Compute Confusion Matrix ---
+    predicted_labels <- ifelse(test_output > 0.1, 1, 0)  # Assuming binary classification
+    actual_labels <- Y_test
+    
+    confusion_matrix <- table(Predicted = predicted_labels, Actual = actual_labels)
+    confusion_matrices[[epoch]] <- confusion_matrix  # Store for analysis
+    
     if (verbose && epoch %% 100 == 0) {
       cat("Epoch:", epoch, "Cost:", current_cost, "\n")
     }
   }
   
-  # Return updated NN with training results
   NN$cost_history <- cost_history
   NN$final_output <- y.fw[[length(y.fw)]]
   
   return(NN)
 }
 
-# Prediction function to use the trained network
-predict_neural_network <- function(NN, new_data = NULL) {
-  # If no new data is provided, use the training data
+NN.predict <- function(NN, new_data = NULL) {
   if (is.null(new_data)) {
     X <- NN$X
   } else {
     X <- new_data
   }
   
-  # Forward pass through the network
   y <- as.matrix(X)
   
   for (l in 1:length(NN$weights)) {
