@@ -52,8 +52,8 @@ NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
   weights <- initialize_weights(layers)
   
   NN <- list(
-    X = X,
-    Y.d = Y.d,
+    # X = X,
+    # Y.d = Y.d,
     layers = layers,
     weights = weights,
     learning_rate = learning_rate,
@@ -65,46 +65,40 @@ NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
   
 }
 
-feed_forward <- function(NN){
+feed_forward <- function(NN, X.train){
   y.fw <- list()
   z.fw <- list()
   
-  # Start with input layer
-  y <- as.matrix(NN$X)
+  y <- X.train
   y.fw[[1]] <- y  # Store the input layer activation
   
   for(l in 1:length(NN$weights)){
-    # Add bias term
-    y.p <- cbind(-1, y)
+    y.p <- as.matrix(cbind(-1, y))
     
-    # Calculate weighted input
     z.l <- y.p %*% NN$weights[[l]]
     z.fw[[l]] <- z.l
     
-    # Apply activation function
     y.l <- activation.fn(z.l)
     
-    # Store activation (using l+1 since input is at position 1)
     y.fw[[l+1]] <- y.l
     
-    # Set current layer output as input to next layer
     y <- y.l
   }
   
   return(list(
-    y.fw = y.fw,  # List of all layer activations (including input)
-    z.fw = z.fw   # List of all weighted inputs (pre-activation)
+    y.fw = y.fw,  
+    z.fw = z.fw   
   ))
 }
 
 
 
-back_propagation <- function(NN, z.fw){
+back_propagation <- function(NN, z.fw,Y.train){
   dirac <- list()
   weight.nb <- length(NN$weights)
   
   z.L <- z.fw[[length(z.fw)]]
-  error <- NN$Y.d - activation.fn(z.L)
+  error <- Y.train - activation.fn(z.L)
   
   # element wise multiplication
   dirac.L <- error * activation.dfn(z.L)
@@ -124,34 +118,37 @@ NN.train <- function(NN, verbose = TRUE) {
   cost_history <- numeric(NN$epochs)
   
   old_weight <- NN$weights
+  percent <- .8
+  
+  test_cost_history <- numeric()
+  confusion_matrices <- list()
   
   for (epoch in 1:NN$epochs) {
-    percent < .8
-    indices <- sample(1:nrow(X), size = percent*nrow(X))
+    indices <- sample(1:nrow(X), size = percent * nrow(X))
     
     X.train <- X[indices,]
-    y.train <- y[indices,]
+    Y.train <- Y[indices,]
     
     X.test <- X[-indices,]
-    y.test <- y[-indices,]
+    Y.test <- Y[-indices,]
     
     
-    forward_result <- feed_forward(NN)
+    forward_result <- feed_forward(NN, X.train)
     y.fw <- forward_result$y.fw
     z.fw <- forward_result$z.fw
     
     output <- y.fw[[length(y.fw)]]
     
-    error <- NN$Y.d - output
+    error <- Y.train - output
     current_cost <- cost(error)
     cost_history[epoch] <- current_cost
     
-    dirac <- back_propagation(NN, z.fw)
+    dirac <- back_propagation(NN, z.fw, Y.train)
     
     for (l in 1:length(NN$weights)) {
       
       if (l == 1) {
-        a <- cbind(-1, NN$X)
+        a <- cbind(-1, X.train)
       } else {
         a <- cbind(-1, y.fw[[l]])
       }
@@ -166,18 +163,18 @@ NN.train <- function(NN, verbose = TRUE) {
     }
     
     # --- 6. Forward propagation on Testing Set ---
-    NN$X <- X_test
-    NN$Y.d <- Y_test
-    test_result <- feed_forward(NN)
+    # NN$X <- X_test
+    # NN$Y.d <- Y_test
+    test_result <- feed_forward(NN, X.test)
     test_output <- test_result$y.fw[[length(test_result$y.fw)]]
     
     # --- 7. Compute Testing Cost ---
-    error_test <- Y_test - test_output
+    error_test <- Y.test - test_output
     test_cost_history[epoch] <- cost(error_test)
     
     # --- 8. Compute Confusion Matrix ---
     predicted_labels <- ifelse(test_output > 0.1, 1, 0)  # Assuming binary classification
-    actual_labels <- Y_test
+    actual_labels <- Y.test
     
     confusion_matrix <- table(Predicted = predicted_labels, Actual = actual_labels)
     confusion_matrices[[epoch]] <- confusion_matrix  # Store for analysis
@@ -193,12 +190,7 @@ NN.train <- function(NN, verbose = TRUE) {
   return(NN)
 }
 
-NN.predict <- function(NN, new_data = NULL) {
-  if (is.null(new_data)) {
-    X <- NN$X
-  } else {
-    X <- new_data
-  }
+NN.predict <- function(NN, X) {
   
   y <- as.matrix(X)
   
