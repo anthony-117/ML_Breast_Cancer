@@ -46,7 +46,8 @@ initialize_weights <- function(layers) {
 
 
 
-NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
+NN <-function(X, Y.d, hidden_layers, learning_rate, momentum){
+  
   layers <- c(ncol(X), hidden_layers, ncol(Y.d))
   
   weights <- initialize_weights(layers)
@@ -57,9 +58,9 @@ NN <-function(X, Y.d, hidden_layers, learning_rate, momentum, epochs){
     layers = layers,
     weights = weights,
     learning_rate = learning_rate,
-    momentum = momentum,
-    epochs = epochs,
-    cost_history = numeric(epochs)
+    momentum = momentum
+    # epochs = epochs,
+    # cost_history = numeric(epochs)
   )
   return(NN)
   
@@ -138,23 +139,47 @@ calculate_metrics <- function(confusion_matrix) {
   ))
 }
 
-NN.train <- function(NN, verbose = TRUE) {
+update.weights <- function(NN, y.fw, dirac, old_weight){
+  for (l in 1:length(NN$weights)) {
+    
+    if (l == 1) {
+      a <- cbind(-1, X.train)
+    } else {
+      a <- cbind(-1, y.fw[[l]])
+    }
+    
+    
+    weight.delta <- NN$learning_rate * (t(a) %*% dirac[[l]]) + NN$momentum *(NN$weights[[l]] - old_weight[[l]])
+    
+    
+    old_weight[[l]] <- NN$weights[[l]]
+    
+    NN$weights[[l]] <- NN$weights[[l]] + weight.delta
+  }
+}
+
+output.classify <- function(output){
+  predicted_labels <- ifelse(output > 0.1, 1, 0)  # Using 0.1 as threshold for binary classification
+  return(predicted_labels)
+}
+
+NN.train <- function(NN, epochs, verbose = TRUE) {
   
-  cost_history <- numeric(NN$epochs)
+  cost_history <- numeric(epochs)
   
   old_weight <- NN$weights
   percent <- .8
   
-  test_cost_history <- numeric(NN$epochs)
+  test_cost_history <- numeric(epochs)
   confusion_matrices <- list()
   
   # For storing evaluation metrics
-  accuracy_history <- numeric(NN$epochs)
-  precision_history <- numeric(NN$epochs)
-  recall_history <- numeric(NN$epochs)
-  f1_history <- numeric(NN$epochs)
+  accuracy_history <- numeric(epochs)
+  precision_history <- numeric(epochs)
+  recall_history <- numeric(epochs)
+  f1_history <- numeric(epochs)
   
-  for (epoch in 1:NN$epochs) {
+  for (epoch in 1:epochs) {
     indices <- sample(1:nrow(X), size = percent * nrow(X))
     
     X.train <- X[indices,]
@@ -194,36 +219,20 @@ NN.train <- function(NN, verbose = TRUE) {
     }
     
     # Forward propagation on Testing Set
-    test_result <- feed_forward(NN, X.test)
-    test_output <- test_result$y.fw[[length(test_result$y.fw)]]
+    forward.result<- feed_forward(NN, X.test)
+    test.y.p <- forward.result$y.fw[[length(forward.result$y.fw)]]
     
-    # Compute Testing Cost
-    error_test <- Y.test - test_output
+    error_test <- Y.test - test.y.p
     test_cost_history[epoch] <- cost(error_test)
     
     # Compute Confusion Matrix
-    predicted_labels <- ifelse(test_output > 0.5, 1, 0)  # Using 0.5 as threshold for binary classification
+    predicted_labels <- output.classify(test.y.p)
     actual_labels <- Y.test
     
     # Create confusion matrix
-    confusion_matrix <- table(Predicted = factor(predicted_labels, levels=c(0,1)), 
-                              Actual = factor(actual_labels, levels=c(0,1)))
-    
-    # Handle case where some combinations might be missing in the confusion matrix
-    if(nrow(confusion_matrix) < 2 || ncol(confusion_matrix) < 2) {
-      # Create a complete 2x2 confusion matrix with zeros for missing combinations
-      complete_matrix <- matrix(0, nrow=2, ncol=2)
-      rownames(complete_matrix) <- c("0", "1")
-      colnames(complete_matrix) <- c("0", "1")
-      
-      # Fill in the values that do exist
-      for(i in rownames(confusion_matrix)) {
-        for(j in colnames(confusion_matrix)) {
-          complete_matrix[i, j] <- confusion_matrix[i, j]
-        }
-      }
-      confusion_matrix <- complete_matrix
-    }
+    confusion_matrix <- table(Predicted = factor(predicted_labels, levels=c(1,0)), 
+                              Actual = factor(actual_labels, levels=c(1,0)))
+
     
     confusion_matrices[[epoch]] <- confusion_matrix
     
@@ -247,7 +256,7 @@ NN.train <- function(NN, verbose = TRUE) {
   NN$confusion_matrices <- confusion_matrices
   
   # Store the final evaluation metrics
-  NN$final_confusion_matrix <- confusion_matrices[[NN$epochs]]
+  NN$final_confusion_matrix <- confusion_matrices[[epochs]]
   NN$accuracy_history <- accuracy_history
   NN$precision_history <- precision_history
   NN$recall_history <- recall_history
@@ -292,7 +301,7 @@ NN.predict <- function(NN, X) {
 
 # Function to plot evaluation metrics over epochs
 plot_metrics <- function(NN) {
-  epochs <- 1:NN$epochs
+  epochs <- 1:length(NN$accuracy_history)
   
   # Create a data frame for plotting
   metrics_df <- data.frame(

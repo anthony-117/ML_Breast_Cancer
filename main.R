@@ -1,15 +1,12 @@
 source("preprocess.R")
 source("NN.R")
 
-# Create and train the neural network
 NN <- NN(X = X, Y.d = Y,
          hidden_layers = c(10, 5, 3), 
          learning_rate = 0.01, 
-         momentum = 0.9, 
-         epochs = 1000)
+         momentum = 0.9)
 
-# Train the model with verbose output to see progress
-NN.trained <- NN.train(NN, verbose = TRUE)
+NN.trained <- NN.train(NN,1000, verbose = TRUE)
 
 # Plot training progress (cost function)
 par(mfrow = c(1, 2))
@@ -34,7 +31,7 @@ par(mfrow = c(1, 1))
 predictions <- NN.predict(NN.trained, X = X)
 
 # Convert predictions to binary class (0 or 1)
-binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+binary_predictions <- ifelse(predictions > 0.1, 1, 0)
 
 # Create final confusion matrix for the entire dataset
 final_confusion_matrix <- table(

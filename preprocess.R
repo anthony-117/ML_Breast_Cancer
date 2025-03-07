@@ -47,8 +47,7 @@ Y <- clean_data %>% select(diagnosis)
 X <- X %>%
   mutate_if(is.numeric, ~(. - min(.)) / (max(.) - min(.)))
 # 6. Converting categories to numbers
-Y <- Y %>% 
-  mutate(diagnosis = as.numeric(as.factor(diagnosis)) - 1)
+Y$diagnosis <- ifelse(Y$diagnosis == "M", 1, 0) 
 
 
 
