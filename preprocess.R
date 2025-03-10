@@ -7,6 +7,7 @@ library(ggcorrplot)
 raw_data <- read.csv("wisc_bc_data.csv")
 
 View(raw_data)
+dim(raw_data)
 names <- sort(names(raw_data))
 summary(raw_data)
 
@@ -43,23 +44,34 @@ print(paste("The dataset contains ", nrow(duplicates), " duplicate rows"))
 X <- clean_data %>% select(-diagnosis)
 Y <- clean_data %>% select(diagnosis)
 
-# 5. Scaling inputs
+# 5. Removing Outliers
+# outliers <- detect_outliers(X)
+
+# 6. Scaling inputs
 X <- X %>%
   mutate_if(is.numeric, ~(. - min(.)) / (max(.) - min(.)))
-# 6. Converting categories to numbers
+
+# 7. Converting categories to numbers
 Y$diagnosis <- ifelse(Y$diagnosis == "M", 1, 0) 
 
 
 
 #-------------Data Visualization-------------
-cor_matrix <- cor(X)
-
-corrplot(cor_matrix, method="color", type="upper", 
-         tl.col="black", tl.srt=45, 
-         title="Feature Correlation Matrix")
+# cor_matrix <- cor(X)
+# 
+# corrplot(cor_matrix, method="color", type="upper", 
+#          tl.col="black", tl.srt=45, 
+#          title="Feature Correlation Matrix")
 
 ggplot(raw_data, aes(x = radius_mean, y = perimeter_mean, color=diagnosis)) +
   geom_point()
+ggplot(raw_data, aes(x = compactness_mean, y = perimeter_mean, color=diagnosis)) +
+  geom_point()
+ggplot(raw_data, aes(x = smoothness_mean, y = symmetry_mean, color = diagnosis)) +
+  geom_point()
+scaled_data <- clean_data %>% 
+  mutate_if(is.numeric, ~(. - min(.)) / (max(.) - min(.)))
+
 
 ggplot(raw_data, aes(x = diagnosis, fill = diagnosis)) +
   geom_bar() +
@@ -67,7 +79,7 @@ ggplot(raw_data, aes(x = diagnosis, fill = diagnosis)) +
   labs(title = "Distribution of Diagnosis Classes",
        x = "Diagnosis",
        y = "Count") +
-  scale_fill_manual(values = c("B" = "skyblue", "M" = "tomato")) +
+  scale_fill_manual(values = c("M" = "skyblue", "B" = "tomato")) +
   theme_minimal()
 
 mean_features <- raw_data %>%

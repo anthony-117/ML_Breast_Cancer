@@ -21,32 +21,15 @@ cost <- function(error){
   return(0.5 * colSums(error^2) )
 }
 
-
-
-
-dirac.hidden <- function(z.l, dirac.lp, weight.p){
+# .p stands for plus 1 layer
+dirac.hidden <- function(z.l, dirac.p, weight.p){
   
-  weight.p_nobias <- weight.p[-1, , drop = FALSE]
+  weight.nobias <- weight.p[-1, , drop = FALSE]
   
   # Matrix multiplication followed by element-wise multiplication
-  dirac <- (dirac.lp %*% t(weight.p_nobias)) * activation.dfn(z.l)
+  dirac <- (dirac.p %*% t(weight.nobias)) * activation.dfn(z.l)
   
   return(as.matrix(dirac))
-}
-
-
-
-
-initialize_weights <- function(layers) {
-  weights = list()
-  
-  # Loop over layers to initialize weights
-  for (i in 1:(length(layers) - 1)) {
-    # Random weights between layers[i] and layers[i+1]
-    weights[[i]] <- matrix(runif((layers[i] +1) * layers[i+1], min=-0.5, max=0.5), nrow=layers[i] +1, ncol=layers[i+1])
-  }
-  
-  return(weights)
 }
 
 
@@ -64,6 +47,20 @@ NN <-function(X, Y.d, hidden_layers){
   return(NN)
   
 }
+initialize_weights <- function(layers) {
+  weights = list()
+  
+  # Loop over layers to initialize weights
+  for (i in 1:(length(layers) - 1)) {
+    # Random weights between layers[i] and layers[i+1]
+    weights[[i]] <- matrix(runif((layers[i] +1) * layers[i+1], min=-0.5, max=0.5), nrow=layers[i] +1, ncol=layers[i+1])
+    # Set first row to fixed value 0.5
+    weights[[i]][1,] <- 0.5
+  }
+  return(weights)
+}
+
+
 
 feed_forward <- function(NN, X.train){
   y.fw <- list()
@@ -73,6 +70,7 @@ feed_forward <- function(NN, X.train){
   y.fw[[1]] <- y  # Store the input layer activation
   
   for(l in 1:length(NN$weights)){
+    # add the -1 neuron 
     y.p <- as.matrix(cbind(-1, y))
     
     z.l <- y.p %*% NN$weights[[l]]
@@ -115,14 +113,15 @@ back_propagation <- function(NN, z.fw,Y.train){
 
 
 output.classify <- function(output){
-  predicted_labels <- ifelse(output > 0.1, 1, 0)  # Using 0.1 as threshold for binary classification
+  # Using 0.1 as threshold for binary classification
+  predicted_labels <- ifelse(output > 0.1, 1, 0)  
   return(predicted_labels)
 }
 
 NN.train <- function(NN, X, Y, epochs, learning_rate, momentum, verbose = TRUE) {
   
   cost_history <- numeric(epochs)
-  test_cost_history <- numeric(epochs)
+  # test_cost_history <- numeric(epochs)
   confusion_matrices <- data.frame(Epoch = integer(), TP = integer(), FP = integer(), FN = integer(), TN = integer())
   
   old_weight <- NN$weights
@@ -157,22 +156,18 @@ NN.train <- function(NN, X, Y, epochs, learning_rate, momentum, verbose = TRUE) 
     
     # Update weights
     for (l in 1:length(NN$weights)) {
-      a <-  cbind(-1, y.fw[[l]])
-      weight.delta <- learning_rate * (t(a) %*% dirac[[l]]) + momentum * (NN$weights[[l]] - old_weight[[l]])
+      a <- y.fw[[l]]
+      gradient <- learning_rate * (t(a) %*% dirac[[l]])
+      gradient <- rbind(rep(0, ncol(gradient)), gradient)
+      weight.delta <- gradient + momentum * (NN$weights[[l]] - old_weight[[l]])
+      
       old_weight[[l]] <- NN$weights[[l]]
       NN$weights[[l]] <- NN$weights[[l]] + weight.delta
     }
     
-    # Testing phase
-    forward_result_test <- feed_forward(NN, X.test)
-    test_output <- forward_result_test$y.fw[[length(forward_result_test$y.fw)]]
-    
-    # Compute test cost
-    error_test <- Y.test - test_output
-    test_cost_history[epoch] <- cost(error_test)
     
     # Compute confusion matrix
-    predicted_labels <- output.classify(test_output)
+    predicted_labels <- NN.predict(NN, X.test)
     actual_labels <- Y.test
     cm <- table(Predicted = factor(predicted_labels, levels = c(1, 0)), 
                 Actual = factor(actual_labels, levels = c(1, 0)))
@@ -202,7 +197,7 @@ NN.train <- function(NN, X, Y, epochs, learning_rate, momentum, verbose = TRUE) 
   # Store evaluation data separately
   training_data <- list(
     cost_history = cost_history,
-    test_cost_history = test_cost_history,
+    # test_cost_history = test_cost_history,
     confusion_matrices = confusion_matrices,
     accuracy_history = accuracy_history,
     precision_history = precision_history,
@@ -223,7 +218,7 @@ NN.predict <- function(NN, X) {
     z.l <- y.p %*% NN$weights[[l]]
     y <- activation.fn(z.l)
   }
-  
+  y <- output.classify(y)
   return(y)
 }
 
@@ -244,7 +239,7 @@ NN.train_multiple.momentum <- function(NN, X, Y, epochs, learning_rate, momentum
   training_results <- list()
   
   for (m in momentums) {
-    cat("Training with learning rate:", lr, "\n")
+    cat("Training with learning rate:", m, "\n")
     result <- NN.train(NN, X, Y, epochs, learning_rate, m, verbose)
     training_results[[as.character(m)]] <- result$training_data
   }
