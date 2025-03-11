@@ -18,7 +18,7 @@ activation.dfn <- function(x){
 }
 
 cost <- function(error){
-  return(0.5 * colSums(error^2) )
+  return(0.5 * colSums(error^2) /nrow(error) )
 }
 
 # .p stands for plus 1 layer
@@ -156,10 +156,9 @@ NN.train <- function(NN, X, Y, epochs, learning_rate, momentum, verbose = TRUE) 
     
     # Update weights
     for (l in 1:length(NN$weights)) {
-      a <- y.fw[[l]]
-      gradient <- learning_rate * (t(a) %*% dirac[[l]])
-      gradient <- rbind(rep(0, ncol(gradient)), gradient)
-      weight.delta <- gradient + momentum * (NN$weights[[l]] - old_weight[[l]])
+      a <- cbind(-1,y.fw[[l]])
+      weight.delta <- learning_rate * (t(a) %*% dirac[[l]]) + 
+        momentum * (NN$weights[[l]] - old_weight[[l]])
       
       old_weight[[l]] <- NN$weights[[l]]
       NN$weights[[l]] <- NN$weights[[l]] + weight.delta
@@ -270,5 +269,77 @@ calculate_metrics <- function(confusion_matrix) {
     precision = precision,
     recall = recall,
     f1_score = f1_score
+  ))
+}
+
+plot_confusion_matrix <- function(NN, X, Y) {
+  # Get predictions from the neural network
+  predictions <- NN.predict(NN, X)
+  
+  pred_vector <- as.vector(predictions)
+  actual_vector <- as.vector(as.integer(Y[[1]]))
+  
+  # Create confusion matrix with factors having levels in the desired order (1 first, then 0)
+  cm <- table(Predicted = factor(pred_vector, levels = c(1, 0)), 
+              Actual = factor(actual_vector, levels = c(1, 0)))
+  
+  # Change the labels to 'M' and 'B'
+  new_labels <- c("M", "B")
+  colnames(cm) <- new_labels[match(colnames(cm), c("1", "0"))]
+  rownames(cm) <- new_labels[match(rownames(cm), c("1", "0"))]
+  
+  # Extract metrics (now using updated labels)
+  TP <- if ("M" %in% rownames(cm) && "M" %in% colnames(cm)) cm["M", "M"] else 0
+  FP <- if ("M" %in% rownames(cm) && "B" %in% colnames(cm)) cm["M", "B"] else 0
+  FN <- if ("B" %in% rownames(cm) && "M" %in% colnames(cm)) cm["B", "M"] else 0
+  TN <- if ("B" %in% rownames(cm) && "B" %in% colnames(cm)) cm["B", "B"] else 0
+  
+  # Calculate performance metrics
+  accuracy <- (TP + TN) / (TP + TN + FP + FN)
+  precision <- ifelse(TP + FP > 0, TP / (TP + FP), 0)
+  recall <- ifelse(TP + FN > 0, TP / (TP + FN), 0)
+  f1_score <- ifelse(precision + recall > 0, 2 * precision * recall / (precision + recall), 0)
+  
+  # Create a data frame for ggplot2
+  cm_df <- as.data.frame(as.table(cm))
+  names(cm_df) <- c("Prediction", "Observed", "Freq")
+  
+  # Make sure the order is preserved in the plot
+  cm_df$Prediction <- factor(cm_df$Prediction, levels = c("M", "B"))
+  cm_df$Observed <- factor(cm_df$Observed, levels = c("M", "B"))
+  
+  # Create the heatmap using ggplot2
+  library(ggplot2)
+  
+  p <- ggplot(cm_df, aes(x = Observed, y = Prediction, fill = Freq)) +
+    geom_tile(color = "white") +
+    geom_text(aes(label = Freq), color = "black", size = 8) +
+    scale_fill_gradient(low = "#c1ff2e", high = "#25188c") +
+    labs(title = "Confusion matrix", x = "Observed", y = "Prediction") +
+    theme_minimal() +
+    theme(
+      axis.text = element_text(size = 12),
+      axis.title = element_text(size = 14),
+      plot.title = element_text(size = 16, hjust = 0.5),
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 10)
+    )
+  
+  # Print metrics
+  cat("Accuracy:", round(accuracy, 4), "\n")
+  cat("Precision:", round(precision, 4), "\n")
+  cat("Recall:", round(recall, 4), "\n")
+  cat("F1 Score:", round(f1_score, 4), "\n")
+  
+  # Return both the confusion matrix, metrics, and the plot
+  return(list(
+    confusion_matrix = cm,
+    metrics = list(
+      accuracy = accuracy,
+      precision = precision,
+      recall = recall,
+      f1_score = f1_score
+    ),
+    plot = p
   ))
 }
