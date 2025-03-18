@@ -2,11 +2,11 @@ source("preprocess.R")
 source("NN.R")
 
 NN <- NN(X = X, Y.d = Y,
-         hidden_layers = c(6,3,2)
+         hidden_layers = c(5,3)
          )
 
 
-result <- NN.train(NN,X, Y, 1000, 0.01, 0.9, verbose = TRUE)
+result <- NN.train(NN,X, Y, 10000, 0.01, 0, verbose = TRUE)
 
 NN.trained <- result$NN
 training_data <- result$training_data
@@ -82,7 +82,7 @@ ggplot(df_momentum, aes(x = Epoch, y = Cost, color = Momentum)) +
 
 # Plot Accuracy History
 ggplot(df_momentum, aes(x = Epoch, y = Accuracy, color = Momentum)) +
-  geom_smooth(size = 1) +
+  geom_line() +
   labs(title = "Effect of Momentum on Accuracy",
        x = "Epoch",
        y = "Accuracy") +
