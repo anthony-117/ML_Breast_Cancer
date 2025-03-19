@@ -1,6 +1,19 @@
 library(tidyverse)
 library(caret)
 
+scale <- function(X) {
+  min_val <- min(X)
+  max_val <- max(X)
+  scaled_X <- (X - min_val) / (max_val - min_val)
+  return(scaled_X)
+}
+
+unscale <- function(y, min_val, max_val) {
+  unscaled_X <- (y * (max_val - min_val)) + min_val
+  return(unscaled_X)
+}
+
+
 sigmoid <- function(x){
   return(1/(1 + exp(-x)))
 }
@@ -225,7 +238,13 @@ NN.train_multiple.lr <- function(NN, X, Y, epochs, learning_rates, momentum, ver
   
   return(training_results)
 }
-
+NN.predict.scaled <- function(NN, X){
+  max <- 0.6316533
+  min <- -0.6316533
+  y <- NN.predict(NN, X)
+  y <- unscale(y, max = max, min = min)
+  return(y)
+}
 
 NN.train_multiple.momentum <- function(NN, X, Y, epochs, learning_rate, momentums, verbose = TRUE) {
   training_results <- list()

@@ -169,7 +169,7 @@ plot_last_epoch <- function(nn_result, title = "Neural Network Last Epoch Result
     scale_color_manual(values = c("Predictions" = "blue", "True Values" = "red")) +
     theme_minimal() +
     theme(legend.title = element_blank()) +
-    theme(legend.position = "topright")
+    theme(legend.position = "top")
   
   # Display the plot
   print(p)
@@ -185,4 +185,49 @@ plot_last_epoch <- function(nn_result, title = "Neural Network Last Epoch Result
     true_values = last_test_true,
     rmse = rmse
   ))
+}
+plot_cost_progression <- function(training_results, title = "Cost Progression During Training") {
+  # Extract cost history
+  cost_history <- training_results$cost_history
+  epochs <- 1:length(cost_history)
+  
+  # Create a dataframe for plotting
+  plot_data <- data.frame(
+    Epoch = epochs,
+    Cost = cost_history
+  )
+  
+  # Calculate initial and final costs for annotation
+  initial_cost <- cost_history[1]
+  final_cost <- cost_history[length(cost_history)]
+  
+  # Create the plot
+  plot <- ggplot(plot_data, aes(x = Epoch, y = Cost)) +
+    geom_line(color = "blue", linewidth = 1) +
+    geom_point(data = plot_data[c(1, nrow(plot_data)), ], 
+               color = c("darkred", "darkgreen"), size = 3) +
+    geom_text(data = plot_data[c(1, nrow(plot_data)), ],
+              aes(label = c(sprintf("Initial: %.6f", initial_cost), 
+                            sprintf("Final: %.6f", final_cost))),
+              vjust = c(-1, -1), hjust = c(0.5, 0.5), size = 3.5) +
+    labs(
+      title = title,
+      subtitle = paste("From epoch 1 to", length(cost_history)),
+      x = "Epoch",
+      y = "Cost"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12),
+      axis.title = element_text(size = 12)
+    )
+  
+  # If the cost range is very large, use log scale
+  if (max(cost_history)/min(cost_history) > 100) {
+    plot <- plot + scale_y_log10() +
+      labs(subtitle = paste("From epoch 1 to", length(cost_history), "(log scale)"))
+  }
+  
+  return(plot)
 }
