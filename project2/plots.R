@@ -282,3 +282,109 @@ plot_training_progression <- function(train_result, dataset = "test", interval =
   # If not animating or gganimate is not available, return a list of plots
   return(plots)
 }
+plot_nn_costs <- function(files, 
+                          title = "Training and Test Costs Across Neural Network Configurations",
+                          output_file = "neural_network_costs.png",
+                          width = 12, 
+                          height = 7) {
+  # Load required libraries
+  library(ggplot2)
+  library(dplyr)
+  library(tidyr)
+  
+  # Initialize an empty list to store cost histories
+  cost_histories <- list()
+  
+  # Load cost histories from each file
+  for (file in files) {
+    # Extract the model name (without .Rdata extension)
+    model_name <- sub("\\.Rdata$", "", file)
+    
+    # Load the file
+    load(file)
+    
+    # Assuming the cost history is stored in a variable called 'result'
+    if (exists("result")) {
+      # Create a data frame with cost history and model name
+      cost_df <- data.frame(
+        Epoch = 1:length(result$cost_history),
+        Train_Cost = result$cost_history,
+        Test_Cost = result$test_cost_history,
+        Model = model_name
+      )
+      
+      cost_histories[[model_name]] <- cost_df
+    }
+  }
+  
+  # Combine all cost histories
+  combined_costs <- do.call(rbind, cost_histories)
+  
+  # Find minimum points for each model and cost type
+  min_points <- combined_costs %>%
+    group_by(Model) %>%
+    summarise(
+      Train_Min_Cost = min(Train_Cost),
+      Train_Min_Epoch = Epoch[which.min(Train_Cost)],
+      Test_Min_Cost = min(Test_Cost),
+      Test_Min_Epoch = Epoch[which.min(Test_Cost)]
+    )
+  
+  # Plot using ggplot2
+  p <- ggplot(combined_costs, aes(x = Epoch, y = Train_Cost, color = Model, linetype = "Train")) +
+    geom_line(alpha = 0.7) +
+    geom_line(aes(y = Test_Cost, color = Model, linetype = "Test"), alpha = 0.7) +
+    
+    # Add minimum points for Train Cost
+    geom_point(
+      data = min_points, 
+      aes(x = Train_Min_Epoch, y = Train_Min_Cost, color = Model), 
+      shape = 16, 
+      size = 3
+    ) +
+    # Add minimum points for Test Cost
+    geom_point(
+      data = min_points, 
+      aes(x = Test_Min_Epoch, y = Test_Min_Cost, color = Model), 
+      shape = 16, 
+      size = 3
+    ) +
+    
+    # Add text labels for minimum points
+    geom_text(
+      data = min_points, 
+      aes(x = Train_Min_Epoch, y = Train_Min_Cost, 
+          label = sprintf("Train Min: %.4f (Ep. %d)", Train_Min_Cost, Train_Min_Epoch)),
+      vjust = -0.5, 
+      hjust = 0,
+      size = 3
+    ) +
+    geom_text(
+      data = min_points, 
+      aes(x = Test_Min_Epoch, y = Test_Min_Cost, 
+          label = sprintf("Test Min: %.4f (Ep. %d)", Test_Min_Cost, Test_Min_Epoch)),
+      vjust = 1.5, 
+      hjust = 0,
+      size = 3
+    ) +
+    
+    scale_linetype_manual(values = c("Train" = "solid", "Test" = "dashed")) +
+    labs(
+      title = title,
+      x = "Epochs",
+      y = "Cost",
+      color = "Model",
+      linetype = "Cost Type"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "right")
+  
+  # Print the plot
+  print(p)
+  
+  # Save the plot
+  ggsave(output_file, width = width, height = height, dpi = 300)
+  
+  # Return the minimum points for reference
+  return(min_points)
+}

@@ -1,25 +1,30 @@
 source("dataset_creation.R")
-source("NN.R")
+source("NN_simple.R")
 source("plots.R")
 
 dataset <- read.csv("sine_wave_dataset_preprocess.csv")
 raw_dataset <- read.csv("sine_wave_dataset.csv")
+dataset <- dataset %>% 
+              filter(X < 3 & X > -3)
 
 X <- as.matrix(dataset$X)
 Y <- as.matrix(dataset$Y)
 
-nn <- NN.create(X, Y, c(128, 64, 32))
+nn <- NN.create(X, Y, c(30, 20, 10))
 
 epochs <- 10000
 
-# result <- NN.train(nn, X, Y, epochs = epochs, learning_rate = 0.01, momentum = 0.9)
-result <- NN.train(nn, X, Y, epochs=1000, learning_rate=0.001,  
-                       batch_type="mini", batch_size = 64, optimizer = "adam", verbose=TRUE)
-# result <- NN.train(nn, X, Y, epochs=1000, learning_rate=0.01, momentum=0.2, 
-#                        batch_type="mini", batch_size=20, verbose=TRUE)
+# # result <- NN.train(nn, X, Y, epochs = epochs, learning_rate = 0.01, momentum = 0.9)
+# result <- NN.train(nn, X, Y, epochs=epochs, learning_rate=0.01,  
+#                        batch_type="mini", batch_size = 64, optimizer = "adagrad", verbose=TRUE)
+result <- NN.train(nn, X, Y, epochs=10000, learning_rate=0.01, momentum=0.2,
+                       batch_type="mini", batch_size=20, verbose=TRUE)
 # result <- NN.train(nn, X, Y, epochs=1000, learning_rate=0.1, momentum=0.9, 
 #                    batch_type="stochastic", batch_size=20, verbose=TRUE)
-# NN.trained <- result$NN
+NN.trained <- result$NN
+X.predict <- seq(5, 10, by = 0.1)
+NN.predict(nn, X.predict, verbose = TRUE)
+NN.predict.periodic(nn, X.predict)
 # X <- seq(0,20, by = 0.1)
 # predictions <- NN.predict(result$NN, X
 # df <- data.frame(

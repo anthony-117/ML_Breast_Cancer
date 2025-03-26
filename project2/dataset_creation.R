@@ -15,7 +15,7 @@ unscale <- function(y, min_val, max_val) {
 set.seed(123)
 
 # Generate random numbers
-X <- round(runif(50000, min = -100, max = 100), 3)
+X <- round(runif(50000, min = -100, max = 100), 2)
 
 # Calculate Y values based on the given function
 # y = 0.6*sin(πx) + 0.3*sin(3πx) + 0.1*sin(5πx) + 0.05*sin(7πx)
@@ -72,16 +72,7 @@ write.csv(dataset, "sine_wave_dataset.csv", row.names = FALSE)
 
 dataset$Y <- scale(dataset$Y)
 dataset <- dataset %>% 
-  filter(X >= -3 & X <= 3)
+  filter(X >= -10 & X <= 10)
 write.csv(dataset, "sine_wave_dataset_preprocess.csv", row.names = FALSE)
 
 
-
-scale <- function(X){
-  result <- (X - min(.)/(max(.) - min(.)))
-  return(result)
-}
-unscale <- function(y, min, max){
-  result <- ((max - min) *y) + min
-  return(result)
-}
