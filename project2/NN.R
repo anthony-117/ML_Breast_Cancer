@@ -488,7 +488,7 @@ update_adagrad <- function(NN, gradients, state, learning_rate) {
   return(list(NN = NN, state = state))
 }
 
-NN.predict <- function(NN, X) {
+NN.predict <- function(NN, X, verbose = FALSE) {
   
   y <- as.matrix(X)
   
@@ -497,6 +497,51 @@ NN.predict <- function(NN, X) {
     z.l <- y.p %*% NN$weights[[l]]
     y <- activation.fn(z.l)
   }
+  if(verbose){
+    df <- data.frame(
+      X = as.numeric(X),
+      Predictions = as.numeric(y)
+    )
+    df <- df[order(df$X), ]
+    
+    p <- ggplot(df, aes(x = X)) +
+      geom_line(aes(y = Predictions, color = "Predictions"), 
+                size = 1, linetype = "solid") +
+      scale_color_manual(values = c("Predictions" = "tomato")) +
+      labs(title = "Prediction",
+           x = "X", y = "Y") +
+      theme_minimal() +
+      theme(legend.title = element_blank())
+    print(p)
+  }
+  
   
   return(y)
+}
+
+
+NN.predict.periodic <- function(NN, X.predict){
+  X <- (X.predict %% 2)  
+  Y <- NN.predict(NN, X)
+  
+  df <- data.frame(
+    X = as.numeric(X.predict),
+    Predictions = as.numeric(Y)
+  )
+  df <- df[order(df$X), ]
+  
+  # Real-time plot
+  # Real-time plot
+  p <- ggplot(df, aes(x = X)) +
+    
+    geom_line(aes(y = Predictions, color = "Predictions"), 
+              size = 1, linetype = "solid") +
+    scale_color_manual(values = c("Predictions" = "tomato")) +
+    labs(title = "Prediction",
+         x = "X", y = "Y") +
+    theme_minimal() +
+    theme(legend.title = element_blank())
+  
+  print(p)
+  return(Y)
 }
